@@ -1,0 +1,35 @@
+#VRML_SIM R2021a utf8
+WorldInfo {
+  title "DJI MAVIC 2 PRO"
+  basicTimeStep 8
+  defaultDamping Damping {
+    linear 0.5
+    angular 0.5
+  }
+  coordinateSystem "NUE"
+}
+Viewpoint {
+  orientation -0.5835083169596976 0.8004004488556312 0.13739419751417856 0.57221874842083
+  position 2.142843205210297 1.6442114846025095 3.9796418052043245
+  near 0.2
+  follow "Mavic 2 PRO"
+  followSmoothness 0.2
+}
+TexturedBackground {
+  luminosity 3
+}
+TexturedBackgroundLight {
+}
+Floor {
+  tileSize 6 6
+  appearance Marble {
+  }
+}
+Robot {
+  supervisor TRUE
+}
+Mavic2Pro {
+  translation 0.0053080954505080324 0.06570872787430436 7.785467950829278e-09
+  rotation -0.024664033987941765 -0.70689221253714 -0.7068911410406756 -3.0922906616683865
+  controller "controller_py"
+}
