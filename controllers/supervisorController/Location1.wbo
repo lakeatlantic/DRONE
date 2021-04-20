@@ -5,7 +5,7 @@ DEF LOC1 Solid {
       appearance PBRAppearance {
         baseColorMap ImageTexture {
           url [
-            "textures/wooden_box_base_color.jpg"
+            "textures/wooden_box_normal.jpg"
           ]
         }
         roughnessMap ImageTexture {

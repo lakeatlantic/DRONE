@@ -1,8 +1,4 @@
-import numpy as np
 from deepbots.supervisor.controllers.supervisor_emitter_receiver import SupervisorCSV
-from PPOAgent import PPOAgent, Transition
-from utilities import normalizeToRange
-import time
 from abc import abstractmethod
 from collections.abc import Iterable
 import argparse
@@ -20,37 +16,26 @@ from utils.make_env import make_env
 from utils.buffer import ReplayBuffer
 from utils.env_wrappers import SubprocVecEnv, DummyVecEnv
 from algorithms.maddpg import MADDPG
+import math
 
 num_agents = 2
 global_et_i = 1
+DIST_SENSORS_MM = {'min': -2.5, 'max': 2.5}
 
 class CartPoleSupervisor(SupervisorCSV):
 	def __init__(self):
 		super().__init__()
-		# self.observationSpace = 3
-		# self.actionSpace = 2
 		self.num_agents = num_agents
 
 		self.robot = []
 		self.target = []
-		# for i in range(num_agents):
-		# 	pos = np.random.uniform(-20, 20, 3)
-		# 	pos[1] = 0
-		# 	self.target.append(pos)
 		self.box = []
-		# self.respawnRobot()
-		# self.poleEndpoint = self.supervisor.getFromDef("POLE_ENDPOINT")
 		self.messageReceived = None	 # Variable to save the messages received from the robot
 
-		# self.episodeCount = 0  # Episode counter
-		# self.episodeLimit = 100  # Max number of episodes allowed
-		# self.stepsPerEpisode = 2000  # Max number of steps per episode
-		# self.episodeScore = 0  # Score accumulated during an episode
-		# self.episodeScoreList = []  # A list to save all the episode scores, used to check if task is solved
-
+	# currently suspended
 	def load_locations(self):
-		rootNode = self.supervisor.getRoot()  # This gets the root of the scene tree
-		childrenField = rootNode.getField('children')  # This gets a list of all the children, ie. objects of the scene
+		rootNode = self.supervisor.getRoot()
+		childrenField = rootNode.getField('children')
 		for i in range(num_agents):
 			childrenField.importMFNode(-1, "Location"+str(i+1)+".wbo")
 
@@ -62,64 +47,43 @@ class CartPoleSupervisor(SupervisorCSV):
 			# Despawn existing robot
 			for i in range(num_agents):
 				self.robot[i].remove()
+				self.box[i].remove()
 			self.robot.clear()
-		# if len(self.box) != 0:
-		# 	# Despawn existing robot
-		# 	for i in range(num_agents):
-		# 		self.box[i].remove()
-		# 	self.box.clear()
+			self.box.clear()
 
 		# Respawn robot in starting position and state
 		rootNode = self.supervisor.getRoot()
 		childrenField = rootNode.getField('children')
 		for i in range(num_agents):
-			childrenField.importMFNode(-1, "Robot"+str(i+1)+".wbo")
-		# for i in range(num_agents):
-		# 	childrenField.importMFNode(-1, "Location"+str(i+1)+".wbo")
+			childrenField.importMFNode(-1, "mavic"+str(i+1)+".wbo")
+			childrenField.importMFNode(-1, "Location"+str(i+1)+".wbo")
 
-		# Get the new robot and pole endpoint references
+		# UAV respawn
 		for i in range(num_agents):
 			self.robot.append(self.supervisor.getFromDef("ROBOT"+str(i+1)))
 			robot_node = self.supervisor.getFromDef("ROBOT"+str(i+1))
-
 			# rn = self.supervisor.getFromDef("ROBOT"+str(i+1)+".BODY_SLOT")
 			# cf = rn.getField('children')
 			# cf.importMFNode(-1, "Solid"+str(i+1)+".wbo")
-
 			trans_field = robot_node.getField("translation")
-			pos = np.random.uniform(0, 5, 3)
+			pos = np.random.uniform(-5, 5, 3)
 			pos[1] = 0.1
+
 			location = pos.tolist()
 			trans_field.setSFVec3f(location)
 			robot_node.resetPhysics()
 
+		# box respawn
 		for i in range(num_agents):
-			# self.box.append(self.supervisor.getFromDef("LOC"+str(i+1)))
+			self.box.append(self.supervisor.getFromDef("LOC"+str(i+1)))
 			box_node = self.supervisor.getFromDef("LOC"+str(i+1))
 			trans_field = box_node.getField("translation")
-			pos = np.random.uniform(0, 5, 3)
+			pos = np.random.uniform(-5, 5, 3)
 			pos[1] = 0.001
 
 			location = pos.tolist()
 			trans_field.setSFVec3f(location)
 			box_node.resetPhysics()
-
-		# self.target.clear()
-		# for i in range(num_agents):
-		# 	# self.box.append(self.supervisor.getFromDef("LOC"+str(i+1)))
-		# 	box_node = self.supervisor.getFromDef("LOC"+str(i+1))
-		# 	trans_field = box_node.getField("translation")
-		# 	pos = np.random.uniform(0, 5, 3)
-		# 	pos[1] = 0.001
-		# 	temp_pos = copy.copy(pos)
-		# 	temp_pos[1] = 1.0
-
-		# 	location = pos.tolist()
-		# 	trans_field.setSFVec3f(location)
-		# 	box_node.resetPhysics()
-		# 	self.target.append(temp_pos)
-
-		# self.poleEndpoint = self.supervisor.getFromDef("POLE_ENDPOINT")
 
 	def check(self):
 		for i in range(num_agents):
@@ -141,6 +105,7 @@ class CartPoleSupervisor(SupervisorCSV):
 			self.box.clear()
 
 	#####################
+	#####################
 
 	def flight(self, t_i):
 		print('timestep ==>', t_i)
@@ -150,102 +115,94 @@ class CartPoleSupervisor(SupervisorCSV):
 
 	def get_observations(self):
 		pass
-		# obs = self.robot.getField("translation").getSFVec3f()
-		# obs = self.robot.getPosition()
-		# return obs
 
 	def get_reward(self, action=None):
 		pass
-		# height = self.robot.getField("translation").getSFVec3f()[1]
-		# height = self.robot.getPosition()[1]
-		# diff = abs(1-height)
-		# return -diff
 
 	def is_done(self):
 		pass
-		# return False
 
 	def get_info(self):
 		pass
-		# return None
 
 	##################
 	##################
 	##################
 	##################
 
-	# def get_observation_agent(self, i):
-	# 	# target_pos = []
-	# 	# # target_pos.append(np.array(self.target[i]) - np.array(self.robot[i].getField("translation").getSFVec3f()))
-	# 	# target_pos.append(np.array(self.target[i]))
+	def normalize_to_range(self, value, min, max, newMin, newMax):
+		value = float(value)
+		min = float(min)
+		max = float(max)
+		newMin = float(newMin)
+		newMax = float(newMax)
+		return (newMax - newMin) / (max - min) * (value - max) + newMax
 
-	# 	target_pos = []
-	# 	# target_pos.append(np.array(self.target[i]) - np.array(self.robot[i].getField("translation").getSFVec3f()))
-	# 	temp_tar = []
-	# 	temp_tar.append(self.target[i][0])
-	# 	temp_tar.append(self.target[i][2])
-	# 	target_pos.append(np.array(temp_tar))
-
-	# 	other_pos = []
-	# 	for j in range(num_agents):
-	# 		if j == i:
-	# 			continue
-	# 		# # other_pos.append(np.array(self.robot[j].getField("translation").getSFVec3f()) - np.array(self.robot[i].getField("translation").getSFVec3f()))
-	# 		# other_pos.append(np.array(self.robot[j].getPosition()))
-
-	# 		other_temp = []
-	# 		other_temp.append(np.array(self.robot[j].getPosition())[0])
-	# 		other_temp.append(np.array(self.robot[j].getPosition())[2])
-	# 		target_pos.append(np.array(other_temp))
-
-	# 	# # concatenated = np.concatenate([np.array(self.robot[i].getField("translation").getSFVec3f())] + [np.array(self.robot[i].getField("rotation").getSFRotation())] + target_pos + other_pos)
-	# 	# concatenated = np.concatenate([np.array(self.robot[i].getPosition())] + target_pos + other_pos)
-
-	# 	own_pos = []
-	# 	own_temp = []
-	# 	own_temp.append(np.array(self.robot[i].getPosition())[0])
-	# 	own_temp.append(np.array(self.robot[i].getPosition())[2])
-	# 	own_pos.append(np.array(own_temp))
-	# 	concatenated = np.concatenate(own_pos + target_pos + other_pos)
-	# 	return concatenated
 
 	def get_observation_agent(self, i):
-		target = np.array(self.box[i].getField("translation").getSFVec3f())
-		target[1] = 2.0
 		target_pos = []
-		target_pos.append(target - np.array(self.robot[i].getField("translation").getSFVec3f()))
-
+		target_pos.append(np.array(self.box[i].getPosition()))
 		other_pos = []
-		for j in range(num_agents):
-			if j == i:
-				continue
-			other_pos.append(np.array(self.robot[j].getField("translation").getSFVec3f()) - 
-													np.array(self.robot[i].getField("translation").getSFVec3f()))
+		# for j in range(num_agents):
+		# 	if j == i:
+		# 		continue
+		# 	other_pos.append(np.array(self.robot[j].getPosition()))
 
-		concatenated = np.concatenate([np.array(self.robot[i].getField("translation").getSFVec3f())] + target_pos + other_pos)
-		# print(concatenated)
+		own_pos = np.array(self.robot[i].getPosition())
+		own_vel = np.array(self.robot[i].getVelocity())
+		# own_ori = np.array(self.robot[i].getOrientation())
+		concatenated = np.concatenate([own_pos] + [own_vel] + target_pos + other_pos)
 		return concatenated
 
-	def get_reward_agent(self, i, action=None):
-		# dist = self.robot[i].getField("translation").getSFVec3f()[2]
-		# return -dist
+	def unit_vector(self, vector):
+		return vector / np.linalg.norm(vector)
 
-		rew = 0
-		one = np.array(self.box[i].getField("translation").getSFVec3f())
-		one[1] = 2.0
-		two = np.array(self.robot[i].getField("translation").getSFVec3f())
-		diff = np.sqrt(np.sum(np.square(one - two)))
+	def get_angle_from_target(self, robot_node, target_node, is_true_angle=False, is_abs=False):
+		# both UAVs parallel here
+		v1 = np.array([robot_node.getOrientation()[2], robot_node.getOrientation()[5], robot_node.getOrientation()[8]])
+		v2 = np.array([target_node.getOrientation()[1], target_node.getOrientation()[4], target_node.getOrientation()[7]])
+		v1_u = self.unit_vector(v1)
+		v2_u = self.unit_vector(v2)
+		return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
 
-		#
-		if diff < 1:
-			rew += 20
-		else:
-			rew -= (diff)
-		return rew
-		#
+		# robotAngle = robot_node.getField('rotation').getSFRotation()[3]
+		# robot = robot_node.getField('translation').getSFVec3f()
+		# target = target_node.getField('translation').getSFVec3f()
+		# robot[0], robot[1], robot[2] = robot[0]-target[0], robot[1]-target[1], robot[2]-target[2]
+		# target[0], target[1], target[2] = target[0]-target[0], target[1]-target[1], target[2]-target[2]
+		# robotCoordinates = robot
+		# targetCoordinate = target
 
-		# reward = 1-(0.3*(abs(one - two))).sum()
-		# return reward
+		# x_r = (targetCoordinate[0] - robotCoordinates[0])
+		# z_r = (targetCoordinate[2] - robotCoordinates[2])
+
+		# z_r = -z_r
+
+		# # robotWorldAngle = math.atan2(robotCoordinates[2], robotCoordinates[0])
+
+		# if robotAngle < 0.0: robotAngle += 2 * np.pi
+
+		# x_f = x_r * math.sin(robotAngle) - \
+		#       z_r * math.cos(robotAngle)
+
+		# z_f = x_r * math.cos(robotAngle) + \
+		#       z_r * math.sin(robotAngle)
+
+		# # print("x_f: {} , z_f: {}".format(x_f, z_f) )
+		# if is_true_angle:
+		#     x_f = -x_f
+		# angleDif = math.atan2(z_f, x_f)
+
+		# if is_abs:
+		#     angleDif = abs(angleDif)
+
+		# return angleDif
+
+	def get_reward_agent(self, i, action, pre_pos):
+		one = np.array(self.box[i].getPosition())
+		two = np.array(self.robot[i].getPosition())
+		diff_dist = np.sqrt(np.sum(np.square(one - two)))
+		return -diff_dist
 
 	def is_done_agent(self, i):
 		return False
@@ -259,15 +216,11 @@ class CartPoleSupervisor(SupervisorCSV):
 	##################
 
 	def solved(self):
-		# if len(self.episodeScoreList) > 100:  # Over 100 trials thus far
-		# 	if np.mean(self.episodeScoreList[-100:]) > 195.0:  # Last 100 episodes' scores average value
-		# 		return True
 		return False
 
 	def reset(self):
 		self.respawnRobot()
 		self.supervisor.simulationResetPhysics()  # Reset the simulation physics to start over
-		# time.sleep(5)
 		
 		self.messageReceived = None
 
@@ -285,12 +238,6 @@ class CartPoleSupervisor(SupervisorCSV):
 
 		actind_i = []
 		for i in range(num_agents):
-			# discrete
-			# result = np.where(action[0][i] == np.amax(action[0][i]))
-			# ind = result[0][0]
-			# actind_i.append(ind)
-			# actind_i.append(i)
-
 			# continuous
 			for j in action[0][i]:
 				actind_i.append(j)
@@ -301,21 +248,20 @@ class CartPoleSupervisor(SupervisorCSV):
 	def stepup(self):
 		for i in range(num_agents):
 			one = np.array(self.box[i].getField("translation").getSFVec3f())
-			one[1] = 2.0
+			one[1] = 1.0
 			two = np.array(self.robot[i].getField("translation").getSFVec3f())
 			diff = np.sqrt(np.sum(np.square(one - two)))
 
+			# if diff < 1:
+			# 	print('picked')
+			# 	box_node = self.supervisor.getFromDef("LOC"+str(i+1))
+			# 	trans_field = box_node.getField("translation")
+			# 	pos = np.random.uniform(-5, 5, 3)
+			# 	pos[1] = 0.001
 
-			if diff < 1:
-				print('picked')
-				box_node = self.supervisor.getFromDef("LOC"+str(i+1))
-				trans_field = box_node.getField("translation")
-				pos = np.random.uniform(0, 5, 3)
-				pos[1] = 0.001
-
-				location = pos.tolist()
-				trans_field.setSFVec3f(location)
-				box_node.resetPhysics()
+			# 	location = pos.tolist()
+			# 	trans_field.setSFVec3f(location)
+			# 	box_node.resetPhysics()
 
 	def step(self, action):
 		if self.supervisor.step(self.timestep) == -1:
@@ -323,16 +269,14 @@ class CartPoleSupervisor(SupervisorCSV):
 
 		actind_i = []
 		for i in range(num_agents):
-			# discrete
-			# result = np.where(action[0][i] == np.amax(action[0][i]))
-			# ind = result[0][0]
-			# actind_i.append(ind)
-			# actind_i.append(i)
-
 			# continuous
 			for j in action[0][i]:
 				actind_i.append(j)
 			actind_i.append(i)
+
+		pre_pos = []
+		for i in range(num_agents):
+			pre_pos.append(np.array(self.robot[i].getField("translation").getSFVec3f()))		
 
 		self.handle_emitter(actind_i)
 		obs_n = []
@@ -342,7 +286,7 @@ class CartPoleSupervisor(SupervisorCSV):
 		single_env_obs.append(obs_n)
 		rews_n = []
 		for i in range(num_agents):
-			rews_n.append(self.get_reward_agent(i, action[0][i]))
+			rews_n.append(self.get_reward_agent(i, action[0][i], pre_pos[i]))
 		dones_n = []
 		for i in range(num_agents):
 			dones_n.append(self.is_done_agent(i))
@@ -378,6 +322,8 @@ class CartPoleSupervisor(SupervisorCSV):
 
 train = True
 # train = False
+that_one = True
+# that_one = False
 cont = True
 
 if train:
@@ -388,20 +334,23 @@ if train:
 	n_training_threads = 1
 	agent_alg = 'MADDPG'
 	adversary_alg = 'MADDPG'
-	tau = 0.01
-	lr = 0.01
-	hidden_dim = 32 #64
+	tau = 0.01 #0.01
+	lr = 0.01 #0.01
+	hidden_dim = 64 #64
 	buffer_length = int(1e6) #int(1e6)
 	n_rollout_threads = 1
-	n_exploration_eps = 25000
+	n_exploration_eps = 25000 
 	final_noise_scale = 0.0
-	init_noise_scale = 0.3
-	batch_size = 2048 #1024
+	init_noise_scale = 0.3 #0.3
+	batch_size = 1024 #1024, 32640
 	steps_per_update = 100
 	save_interval = 500
 
 	n_episodes = 10000
-	episode_length = 1420 #1920
+	if that_one:
+		episode_length = 1920 #1920
+	else:
+		episode_length = 2500 #1920
 
 	USE_CUDA = False
 	is_new_file = False
@@ -484,9 +433,6 @@ if train:
 				file_t.write('0')
 				is_new_file = True
 			##
-	# run_dir = model_dir / curr_run
-	# log_dir = run_dir / 'logs'
-	# os.makedirs(log_dir)
 	logger = SummaryWriter(str(log_dir))
 
 	torch.manual_seed(seed)
@@ -495,7 +441,7 @@ if train:
 		torch.set_num_threads(n_training_threads)
 
 	supervisor = CartPoleSupervisor()
-	supervisor.load_locations()
+	# supervisor.load_locations()
 
 	if is_new_file == True:
 		maddpg = MADDPG.init_from_env(supervisor, agent_alg=agent_alg, adversary_alg=adversary_alg, tau=tau, lr=lr, hidden_dim=hidden_dim)
@@ -505,7 +451,7 @@ if train:
 
 	obsp, acsp = [], []
 	for i in range(num_agents):
-		obsp.append(9)
+		obsp.append(12)
 		acsp.append(2)
 
 	replay_buffer = ReplayBuffer(buffer_length, supervisor.num_agents, obsp, acsp)
@@ -515,7 +461,7 @@ if train:
 
 	file_t.seek(0)
 	index_val_t = int(file_t.read())
-	# print('index_val', index_val)
+	
 	for ep_i in range(index_val, n_episodes, n_rollout_threads):
 		file.seek(0)
 		file.write(str(ep_i))
@@ -530,29 +476,39 @@ if train:
 		check_point = 400
 		itm_et_i = 0
 
+		# init actions
 		temp_act_init = []
 		for i in range(num_agents):
-			temp_act_init.append(np.array([supervisor.robot[i].getField("translation").getSFVec3f()[2], supervisor.robot[i].getField("translation").getSFVec3f()[0]]))
+			if that_one:
+				temp_act_init.append(np.array([0.0, 0.0]))
+			else:
+				temp_act_init.append(np.array([supervisor.robot[i].getField("translation").getSFVec3f()[2], supervisor.robot[i].getField("translation").getSFVec3f()[0]]))
 		temp_actions = []
 		temp_actions.append(temp_act_init)
 
+		# rise to given altitude
 		for et_i in range(check_point):
 			# supervisor.flight(et_i)
 			supervisor.step_init(temp_actions)
 			itm_et_i = et_i
-		for et_i in range(itm_et_i):
+		et_i = 0 # itm_et_i
+		for et_i in range(episode_length):
 			if supervisor.check():
 				break
 			torch_obs = [Variable(torch.Tensor(np.vstack(obs[:, i])), requires_grad=False) for i in range(maddpg.nagents)]
 			torch_agent_actions = maddpg.step(torch_obs, explore=True)
 			agent_actions = [ac.data.numpy() for ac in torch_agent_actions]
 			actions = [[ac[i] for ac in agent_actions] for i in range(n_rollout_threads)]
-			# print('actions', actions)
 			global_et_i = et_i+1
-			for i in range(num_agents):
-				actions[0][i][0] = 2 * actions[0][i][0] + supervisor.robot[i].getField("translation").getSFVec3f()[2]
-				actions[0][i][1] = 2 * actions[0][i][1] + supervisor.robot[i].getField("translation").getSFVec3f()[0]
+
+			if that_one:
+				pass
+			else:
+				for i in range(num_agents):
+					actions[0][i][0] = 2 * actions[0][i][0] + supervisor.robot[i].getField("translation").getSFVec3f()[2]
+					actions[0][i][1] = 2 * actions[0][i][1] + supervisor.robot[i].getField("translation").getSFVec3f()[0]
 			next_obs, rewards, dones, infos = supervisor.step(actions)
+
 			index_val_t += 1
 			file_t.seek(0)
 			file_t.write(str(index_val_t))
@@ -617,7 +573,6 @@ else:
 	supervisor.load_locations()
 
 	maddpg = MADDPG.init_from_save(model_path)
-	# curr_agent = maddpg.agents[0]
 	maddpg.prep_rollouts(device='cpu')
 
 	for ep_i in range(n_episodes):
@@ -627,16 +582,22 @@ else:
 		check_point = 400
 		itm_et_i = 0
 		
+		# init actions
 		temp_act_init = []
 		for i in range(num_agents):
-			temp_act_init.append(np.array([supervisor.robot[i].getField("translation").getSFVec3f()[2], supervisor.robot[i].getField("translation").getSFVec3f()[0]]))
+			if that_one:
+				temp_act_init.append(np.array([0.0, 0.0]))
+			else:
+				temp_act_init.append(np.array([supervisor.robot[i].getField("translation").getSFVec3f()[2], supervisor.robot[i].getField("translation").getSFVec3f()[0]]))
 		temp_actions = []
 		temp_actions.append(temp_act_init)
 
+		# rise to given altitude
 		for t_i in range(check_point):
 			supervisor.step_init(temp_actions)
 			itm_et_i = t_i
-		for t_i in range(itm_et_i):
+		t_i = 0 # itm_et_i
+		for t_i in range(episode_length):
 			if supervisor.check():
 				break
 			# supervisor.flight(t_i)
@@ -644,23 +605,16 @@ else:
 			torch_obs = [Variable(torch.Tensor(np.vstack(obs[:, i])), requires_grad=False) for i in range(maddpg.nagents)]
 			# torch_obs = [Variable(torch.Tensor(obs[i]).view(1, -1), requires_grad=False) for i in range(maddpg.nagents)]
 
-			# # get actions as torch Variables
-			# torch_actions = maddpg.step(torch_obs, explore=False)
-			# # convert actions to numpy arrays
-			# actions = [ac.data.numpy().flatten() for ac in torch_actions]
-			# obs, rewards, dones, infos = supervisor.step(actions)
-
-			# print(torch_obs)
-			# value = curr_agent.policy(torch_obs[0])
-			# tar_value = curr_agent.target_policy(torch_obs[0])
-			# print('value', value)
 			torch_agent_actions = maddpg.step(torch_obs, explore=True)
 			agent_actions = [ac.data.numpy() for ac in torch_agent_actions]
 			actions = [[ac[i] for ac in agent_actions] for i in range(n_rollout_threads)]
-			# print('actions eval', actions)
-			for i in range(num_agents):
-				actions[0][i][0] = 2 * actions[0][i][0] + supervisor.robot[i].getField("translation").getSFVec3f()[2]
-				actions[0][i][1] = 2 * actions[0][i][1] + supervisor.robot[i].getField("translation").getSFVec3f()[0]
+
+			if that_one:
+				pass
+			else:
+				for i in range(num_agents):
+					actions[0][i][0] = 2 * actions[0][i][0] + supervisor.robot[i].getField("translation").getSFVec3f()[2]
+					actions[0][i][1] = 2 * actions[0][i][1] + supervisor.robot[i].getField("translation").getSFVec3f()[0]
 			next_obs, rewards, dones, infos = supervisor.step(actions)
 
 	supervisor.close()

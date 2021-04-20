@@ -136,7 +136,7 @@ class CartpoleRobot(RobotEmitterReceiverCSV):
 		yGPS = self.gps.getValues()[0]
 		zGPS = self.gps.getValues()[1]
 
-		self.throttlePID.setpoint = 2.0
+		self.throttlePID.setpoint = 1.0
 		vertical_input = self.throttlePID(zGPS)
 		yaw_input = self.yawPID(yaw)
 

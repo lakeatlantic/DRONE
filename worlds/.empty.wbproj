@@ -7,6 +7,7 @@ centralWidgetVisible: 1
 orthographicViewHeight: 1
 textFiles: 0 "controllers/robotController/robotController.py"
 consoles: Console:All:All
+renderingDevicePerspectives: 1:camera;1;1;0;0
 renderingDevicePerspectives: Mavic 2 PRO:camera;1;1;0;0
 x3dExport-shadowBias: 0
 x3dExport-shadowMapSize: 2048

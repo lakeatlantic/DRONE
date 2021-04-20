@@ -124,10 +124,6 @@ class MADDPG(object):
         else:  # DDPG
             vf_in = torch.cat((obs[agent_i], acs[agent_i]), dim=1)
         actual_value = curr_agent.critic(vf_in)
-
-        V = actual_value.mean()
-        TV = target_value.mean()
-
         vf_loss = MSELoss(actual_value, target_value.detach())
         vf_loss.backward()
         if parallel:
@@ -168,17 +164,11 @@ class MADDPG(object):
             average_gradients(curr_agent.policy)
         torch.nn.utils.clip_grad_norm_(curr_agent.policy.parameters(), 0.5)
         curr_agent.policy_optimizer.step()
-        # if logger is not None:
-        #     logger.add_scalars('agent%i/losses' % agent_i,
-        #                        {'vf_loss': vf_loss,
-        #                         'pol_loss': pol_loss},
-        #                        self.niter)
-
         if logger is not None:
-            logger.add_scalars('agent%i/Q-Value' % agent_i,
-                               {'current_value': V,
-                                'target value': TV},
-                               index_val_t)
+            logger.add_scalars('agent%i/losses' % agent_i,
+                               {'vf_loss': vf_loss,
+                                'pol_loss': pol_loss},
+                               self.niter)
 
     def update_all_targets(self):
         """
@@ -248,9 +238,9 @@ class MADDPG(object):
         agent_init_params = []
         alg_types = [agent_alg for i in range(supervisor.num_agents)]
         for i in range(supervisor.num_agents):
-            agent_init_params.append({'num_in_pol': 9,
+            agent_init_params.append({'num_in_pol': 12,
                                       'num_out_pol': 2,
-                                      'num_in_critic': 22})
+                                      'num_in_critic': 28})
         init_dict = {'gamma': gamma, 'tau': tau, 'lr': lr,
                      'hidden_dim': hidden_dim,
                      'alg_types': alg_types,

@@ -60,18 +60,20 @@ class MLPNetwork(nn.Module):
     #     x = self.predict(x)             # linear output
     #     return x
 
+    # 2 #
+    #####
     # def __init__(self, input_dim, out_dim, hidden_dim=64, nonlin=F.relu, constrain_out=False, norm_in=True, discrete_action=True):
     #     super(MLPNetwork, self).__init__()
     #     # input to first hidden layer
-    #     self.hidden1 = Linear(input_dim, 16)
+    #     self.hidden1 = Linear(input_dim, hidden_dim)
     #     xavier_uniform_(self.hidden1.weight)
     #     self.act1 = Sigmoid()
     #     # second hidden layer
-    #     self.hidden2 = Linear(16, 8)
+    #     self.hidden2 = Linear(hidden_dim, 8)
     #     xavier_uniform_(self.hidden2.weight)
     #     self.act2 = Sigmoid()
     #     # third hidden layer and output
-    #     self.hidden3 = Linear(8, 1)
+    #     self.hidden3 = Linear(8, 2)
     #     xavier_uniform_(self.hidden3.weight)
  
     # # forward propagate input
@@ -85,3 +87,22 @@ class MLPNetwork(nn.Module):
     #     # third hidden layer and output
     #     X = self.hidden3(X)
     #     return X
+
+    # 3 #
+    #####
+    # def __init__(self, input_dim, out_dim, hidden_dim=64, nonlin=F.relu, constrain_out=False, norm_in=True, discrete_action=True):
+    #     super(MLPNetwork, self).__init__()
+        
+    #     self.layer_1 = nn.Linear(input_dim, 16)
+    #     self.layer_2 = nn.Linear(16, 32)
+    #     self.layer_3 = nn.Linear(32, 16)
+    #     self.layer_out = nn.Linear(16, 1)
+        
+    #     self.relu = nn.Tanh()
+
+    # def forward(self, inputs):
+    #     x = self.relu(self.layer_1(inputs))
+    #     x = self.relu(self.layer_2(x))
+    #     x = self.relu(self.layer_3(x))
+    #     x = self.layer_out(x)
+    #     return (x)

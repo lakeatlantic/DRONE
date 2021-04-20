@@ -118,7 +118,7 @@ class CartpoleRobot(RobotEmitterReceiverCSV):
 		if cam_roll < -0.5 or cam_roll > 0.5:
 			self.robot.setCustomData("unstable")
 		
-		i = 1 # [act, ind1, act, ind2, act, ind3]
+		i = 2 # [act, ind1, act, ind2, act, ind3]
 		while i < len(message):
 			if (int(self.name)-1) == int(message[i]):
 				# discrete
@@ -127,13 +127,13 @@ class CartpoleRobot(RobotEmitterReceiverCSV):
 
 				# continuous
 				temp_act_ind = i - 1
-				# roll_inp = message[temp_act_ind]
+				# roll_inp = float(message[temp_act_ind])
 				# temp_act_ind -= 1
-				pitch_inp = message[temp_act_ind]
+				pitch_inp = float(message[temp_act_ind])
 				temp_act_ind -= 1
-				# yaw_inp = message[temp_act_ind]
+				yaw_inp = float(message[temp_act_ind])
 				break
-			i += 2
+			i += 3
 		# action = int(message[0])  # Convert the string message into an action integer
 		time = self.robot.getTime()
 		roll = self.imu.getRollPitchYaw()[0] + 3.14159 / 2.0
@@ -154,44 +154,26 @@ class CartpoleRobot(RobotEmitterReceiverCSV):
 		roll_disturbance = 0.0
 		pitch_disturbance = 0.0
 		yaw_disturbance = 0.0
+
+		# roll_disturbance = roll_inp
+		pitch_disturbance = pitch_inp
+		yaw_disturbance = yaw_inp
 		
-		if pitch_inp == 'None':
-			pitch_disturbance = 0.0
-			# rot_val = np.random.uniform(-1, 0, 1)
-			# toss = np.random.uniform(-1, 1, 1)
-			# if toss <= 0.5:
-			# 	the_val = rot_val
-			# else:
-			# 	the_val = rot_val / 2
-			# yaw_disturbance = float(the_val)
-		else:
-			# pitch_disturbance = 1.0
-			pitch_disturbance = float(pitch_inp)
-			# yaw_disturbance = float(yaw_inp)
+		# if pitch_inp == 'None':
+		# 	pitch_disturbance = 0.0
+		# 	# rot_val = np.random.uniform(-1, 0, 1)
+		# 	# toss = np.random.uniform(-1, 1, 1)
+		# 	# if toss <= 0.5:
+		# 	# 	the_val = rot_val
+		# 	# else:
+		# 	# 	the_val = rot_val / 2
+		# 	# yaw_disturbance = float(the_val)
+		# else:
+		# 	# pitch_disturbance = 1.0
+		# 	pitch_disturbance = float(pitch_inp)
+		# 	# yaw_disturbance = float(yaw_inp)
 
 		altitude = self.gps.getValues()[1]
-
-		# roll_disturbance = float(roll_inp) * 2
-		# pitch_disturbance = float(pitch_inp) * 2
-		# yaw_disturbance = float(yaw_inp)
-
-		# if abs(altitude - self.target_altitude) <= 0.5:
-		# 	if action == 0:
-		# 		pitch_disturbance = 1.0
-		# 	elif action == 1:
-		# 		pitch_disturbance = -1.0
-		# 	elif action == 2:
-		# 		yaw_disturbance = 1.0
-		# 	elif action == 3:
-		# 		yaw_disturbance = -1.0
-			# elif action == 4:
-			# 	roll_disturbance = -1.0
-			# elif action == 5:
-			# 	roll_disturbance = 1.0
-			# elif action == 4:
-			# 	self.target_altitude += 0.05
-			# elif action == 5:
-			# 	self.target_altitude -= 0.05
 		
 		# Set the motors' velocities based on the action received
 		roll_input = self.k_roll_p * self.CLAMP(roll, -1.0, 1.0) + roll_acceleration + roll_disturbance
