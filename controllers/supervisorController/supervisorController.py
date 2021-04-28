@@ -18,6 +18,17 @@ from utils.env_wrappers import SubprocVecEnv, DummyVecEnv
 from algorithms.maddpg import MADDPG
 import math
 import csv
+##
+import os
+import glob
+import time
+from datetime import datetime
+import torch
+import numpy as np
+import gym
+# import roboschool
+# import pybullet_envs
+from PPO import PPO
 
 global_run_dir = None
 num_agents = 1
@@ -252,13 +263,13 @@ class CartPoleSupervisor(SupervisorCSV):
 		
 		self.messageReceived = None
 
-		obs_n = []
-		for i in range(num_agents):
-			obs_n.append(self.get_observation_agent(i))
-		single_env_obs = []
-		single_env_obs.append(obs_n)
+		# obs_n = []
+		# for i in range(num_agents):
+		# 	obs_n.append(self.get_observation_agent(i))
+		# single_env_obs = []
+		# single_env_obs.append(obs_n)
 
-		return np.array(single_env_obs)
+		return self.get_observation_agent(0)
 
 	def step_init(self, action):
 		if self.supervisor.step(self.timestep) == -1:
@@ -300,7 +311,7 @@ class CartPoleSupervisor(SupervisorCSV):
 	def step(self, action):
 		if self.supervisor.step(self.timestep) == -1:
 			exit()
-
+		# print('action', action)
 		actind_i = []
 		for i in range(num_agents):
 			# discrete
@@ -310,7 +321,7 @@ class CartPoleSupervisor(SupervisorCSV):
 			# actind_i.append(i)
 
 			# continuous
-			for j in action[0][i]:
+			for j in action:
 				actind_i.append(j)
 			actind_i.append(i)
 
@@ -319,32 +330,32 @@ class CartPoleSupervisor(SupervisorCSV):
 			pre_pos.append(np.array(self.robot[i].getField("translation").getSFVec3f()))		
 		
 		self.handle_emitter(actind_i)
-		obs_n = []
-		for i in range(num_agents):
-			obs_n.append(self.get_observation_agent(i))
-		single_env_obs = []
-		single_env_obs.append(obs_n)
-		rews_n = []
-		for i in range(num_agents):
-			rews_n.append(self.get_reward_agent(i, action[0][i], pre_pos[i]))
-		dones_n = []
-		for i in range(num_agents):
-			dones_n.append(self.is_done_agent(i))
-		infos_n = {'n': []}
-		for i in range(num_agents):
-			infos_n['n'].append(self.get_info_agent(i))
+		# obs_n = []
+		# for i in range(num_agents):
+		# 	obs_n.append(self.get_observation_agent(i))
+		# single_env_obs = []
+		# single_env_obs.append(obs_n)
+		# rews_n = []
+		# for i in range(num_agents):
+		# 	rews_n.append(self.get_reward_agent(i, action[0][i], pre_pos[i]))
+		# dones_n = []
+		# for i in range(num_agents):
+		# 	dones_n.append(self.is_done_agent(i))
+		# infos_n = {'n': []}
+		# for i in range(num_agents):
+		# 	infos_n['n'].append(self.get_info_agent(i))
 
-		self.stepup()
+		# self.stepup()
 
-		single_env_obs = []
-		single_env_obs.append(obs_n)
-		single_env_rews = []
-		single_env_rews.append(rews_n)
-		single_env_dones = []
-		single_env_dones.append(dones_n)
-		single_env_infos = []
-		single_env_infos.append(infos_n)
-		return np.array(single_env_obs), np.array(single_env_rews), np.array(single_env_dones), single_env_infos
+		# single_env_obs = []
+		# single_env_obs.append(obs_n)
+		# single_env_rews = []
+		# single_env_rews.append(rews_n)
+		# single_env_dones = []
+		# single_env_dones.append(dones_n)
+		# single_env_infos = []
+		# single_env_infos.append(infos_n)
+		return self.get_observation_agent(0), self.get_reward_agent(i, action, pre_pos[i]), self.is_done_agent(i), self.get_info_agent(i)
 
 	def handle_emitter(self, action):
 		assert isinstance(action, Iterable), \
@@ -367,256 +378,196 @@ that_one = True
 cont = True
 
 if train:
-
-	env_id = 'uav'
-	model_name = 'maddpg'
-	seed = 1
-	n_training_threads = 1
-	agent_alg = 'MADDPG'
-	adversary_alg = 'MADDPG'
-	tau = 0.01 #0.01
-	lr = 0.01 #0.01
-	hidden_dim = 64 #64
-	buffer_length = int(1e6) #int(1e6)
-	n_rollout_threads = 1
-	n_exploration_eps = 2000 #25000
-	final_noise_scale = 0.0
-	init_noise_scale = 0.3 #0.3
-	batch_size = 16 #1024, 32640
-	steps_per_update = 100
-	save_interval = 500
-
-	n_episodes = 3000
-	if that_one:
-		episode_length = 1200 #1920
-	else:
-		episode_length = 2500 #1920
-
-	USE_CUDA = False
-	is_new_file = False
-
-	# model_dir = Path('/home/sagar/models') / env_id / model_name
-	model_dir = Path('/home/arshdeep/models') / env_id / model_name
-
-	if not model_dir.exists():
-		curr_run = 'run1'
-		run_dir = model_dir / curr_run
-		os.makedirs(run_dir)
-		log_dir = run_dir / 'logs'
-		os.makedirs(log_dir)
-		file = open(run_dir / 'demo.txt', "w+")
-		file.seek(0)
-		file.write('0')
-
-		file_t = open(run_dir / 'tboard.txt', "w+")
-		file_t.seek(0)
-		file_t.write('0')
-		file_l = open(run_dir / 'lossid.txt', "w+")
-		file_l.seek(0)
-		file_l.write('0')
-		is_new_file = True
-	else:
-		exst_run_nums = [int(str(folder.name).split('run')[1]) for folder in
-						 model_dir.iterdir() if
-						 str(folder.name).startswith('run')]
-		if len(exst_run_nums) == 0:
-			curr_run = 'run1'
-			run_dir = model_dir / curr_run
-			os.makedirs(run_dir)
-			log_dir = run_dir / 'logs'
-			os.makedirs(log_dir)
-			file = open(run_dir / 'demo.txt', "w+")
-			file.seek(0)
-			file.write('0')
-
-			file_t = open(run_dir / 'tboard.txt', "w+")
-			file_t.seek(0)
-			file_t.write('0')
-			file_l = open(run_dir / 'lossid.txt', "w+")
-			file_l.seek(0)
-			file_l.write('0')
-			is_new_file = True
-		else:
-			##
-			curr_run = 'run%i' % (max(exst_run_nums) + 0)
-			run_dir = model_dir / curr_run
-			if path.exists(run_dir / 'demo.txt') == True:
-				file = open(run_dir / 'demo.txt', "r+")
-				file.seek(0)
-				content = file.read()
-				if int(content) + 1 < n_episodes:
-					curr_run = 'run%i' % (max(exst_run_nums) + 0)
-					run_dir = model_dir / curr_run
-					log_dir = run_dir / 'logs'
-					file = open(run_dir / 'demo.txt', "r+")
-					file.seek(0)
-
-					file_t = open(run_dir / 'tboard.txt', "r+")
-					file_t.seek(0)
-					file_l = open(run_dir / 'lossid.txt', "r+")
-					file_l.seek(0)
-				else:
-					curr_run = 'run%i' % (max(exst_run_nums) + 1)
-					run_dir = model_dir / curr_run
-					os.makedirs(run_dir)
-					log_dir = run_dir / 'logs'
-					os.makedirs(log_dir)
-					file = open(run_dir / 'demo.txt', "w+")
-					file.seek(0)
-					file.write('0')
-
-					file_t = open(run_dir / 'tboard.txt', "w+")
-					file_t.seek(0)
-					file_t.write('0')
-					file_l = open(run_dir / 'lossid.txt', "w+")
-					file_l.seek(0)
-					file_l.write('0')
-					is_new_file = True
-			else:
-				curr_run = 'run%i' % (max(exst_run_nums) + 1)
-				run_dir = model_dir / curr_run
-				file = open(run_dir / 'demo.txt', "w+")
-				file.seek(0)
-				file.write('0')
-
-				file_t = open(run_dir / 'tboard.txt', "w+")
-				file_t.seek(0)
-				file_t.write('0')
-				file_l = open(run_dir / 'lossid.txt', "w+")
-				file_l.seek(0)
-				file_l.write('0')
-				is_new_file = True
-			##
-	logger = SummaryWriter(str(log_dir))
-	# with open(run_dir / 'logdemo.csv', 'a', newline='') as file__:
-	# 	writerlog = csv.writer(file__)
-	# 	writerlog.writerow(["pitch", "yaw", "rews"])
-	# global_run_dir = run_dir
-
-	torch.manual_seed(seed)
-	np.random.seed(seed)
-	if not USE_CUDA:
-		torch.set_num_threads(n_training_threads)
-
+	## initialize environment hyperparameter
 	supervisor = CartPoleSupervisor()
-	# supervisor.load_locations()
-
-	if is_new_file == True:
-		maddpg = MADDPG.init_from_env(supervisor, agent_alg=agent_alg, adversary_alg=adversary_alg, tau=tau, lr=lr, hidden_dim=hidden_dim)
+	has_continuous_action_space = True
+	max_ep_len = 1000
+	max_training_timesteps = int(3e6)
+	print_freq = max_ep_len * 10
+	log_freq = max_ep_len * 2
+	save_model_freq = int(1e5)
+	action_std = 0.6
+	action_std_decay_rate = 0.05
+	min_action_std = 0.1 
+	action_std_decay_freq = int(2.5e5)
+	## PPO hyperparameters
+	update_timestep = max_ep_len * 4
+	K_epochs = 80
+	eps_clip = 0.2
+	gamma = 0.99
+	lr_actor = 0.0003
+	lr_critic = 0.001
+	random_seed = 0
+	env_name = 'UAV'
+	print("training environment name : " + env_name)
+	## state space dimension
+	state_dim = 12
+	## action space dimension
+	if has_continuous_action_space:
+		action_dim = 2
 	else:
-		model_path = run_dir / 'model.pt'
-		maddpg = MADDPG.init_from_save(model_path)
-
-	obsp, acsp = [], []
-	for i in range(num_agents):
-		obsp.append(12)
-		acsp.append(2)
-
-	replay_buffer = ReplayBuffer(buffer_length, supervisor.num_agents, obsp, acsp)
-	t = 0
-	file.seek(0)
-	index_val = int(file.read())
-
-	file_t.seek(0)
-	index_val_t = int(file_t.read())
-	file_l.seek(0)
-	index_val_l = int(file_l.read())
+		action_dim = 5
+	## log files for multiple runs are NOT overwritten
+	log_dir = "PPO_logs"
+	if not os.path.exists(log_dir):
+		  os.makedirs(log_dir)
+	log_dir = log_dir + '/' + env_name + '/'
+	if not os.path.exists(log_dir):
+		  os.makedirs(log_dir)
+	## get number of log files in log directory
+	run_num = 0
+	current_num_files = next(os.walk(log_dir))[2]
+	run_num = len(current_num_files)
+	## create new log file for each run
+	log_f_name = log_dir + '/PPO_' + env_name + "_log_" + str(run_num) + ".csv"
+	print("current logging run number for " + env_name + " : ", run_num)
+	print("logging at : " + log_f_name)
+	## checkpointing
+	run_num_pretrained = 0      #### change this to prevent overwriting weights in same env_name folder
+	directory = "PPO_preTrained"
+	if not os.path.exists(directory):
+		  os.makedirs(directory)
+	directory = directory + '/' + env_name + '/'
+	if not os.path.exists(directory):
+		  os.makedirs(directory)
+	checkpoint_path = directory + "PPO_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
+	print("save checkpoint path : " + checkpoint_path)
+	## print all hyperparameters
+	print("--------------------------------------------------------------------------------------------")
+	print("max training timesteps : ", max_training_timesteps)
+	print("max timesteps per episode : ", max_ep_len)
+	print("model saving frequency : " + str(save_model_freq) + " timesteps")
+	print("log frequency : " + str(log_freq) + " timesteps")
+	print("printing average reward over episodes in last : " + str(print_freq) + " timesteps")
+	print("--------------------------------------------------------------------------------------------")
+	print("state space dimension : ", state_dim)
+	print("action space dimension : ", action_dim)
+	print("--------------------------------------------------------------------------------------------")
+	if has_continuous_action_space:
+		print("Initializing a continuous action space policy")
+		print("--------------------------------------------------------------------------------------------")
+		print("starting std of action distribution : ", action_std)
+		print("decay rate of std of action distribution : ", action_std_decay_rate)
+		print("minimum std of action distribution : ", min_action_std)
+		print("decay frequency of std of action distribution : " + str(action_std_decay_freq) + " timesteps")
+	else:
+		print("Initializing a discrete action space policy")
+	print("--------------------------------------------------------------------------------------------")
+	print("PPO update frequency : " + str(update_timestep) + " timesteps")
+	print("PPO K epochs : ", K_epochs)
+	print("PPO epsilon clip : ", eps_clip)
+	print("discount factor (gamma) : ", gamma)
+	print("--------------------------------------------------------------------------------------------")
+	print("optimizer learning rate actor : ", lr_actor)
+	print("optimizer learning rate critic : ", lr_critic)
+	if random_seed:
+		print("--------------------------------------------------------------------------------------------")
+		print("setting random seed to ", random_seed)
+		torch.manual_seed(random_seed)
+		env.seed(random_seed)
+		np.random.seed(random_seed)
+	print("============================================================================================")
+	## training procedure
+	## initialize a PPO agent
+	ppo_agent = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space, action_std)
+	## track total training time
+	start_time = datetime.now().replace(microsecond=0)
+	print("Started training at (GMT) : ", start_time)
+	print("============================================================================================")
+	## logging file
+	log_f = open(log_f_name,"w+")
+	log_f.write('episode,timestep,reward\n')
+	## printing and logging variables
+	print_running_reward = 0
+	print_running_episodes = 0
+	log_running_reward = 0
+	log_running_episodes = 0
+	time_step = 0
+	i_episode = 0
 	
-	for ep_i in range(index_val, n_episodes, n_rollout_threads):
-		file.seek(0)
-		file.write(str(ep_i))
-		print("Episodes %i-%i of %i" % (ep_i + 1, ep_i + 1 + n_rollout_threads, n_episodes))
-		obs = supervisor.reset()
-		maddpg.prep_rollouts(device='cpu')
-
-		explr_pct_remaining = max(0, n_exploration_eps - ep_i) / n_exploration_eps
-		maddpg.scale_noise(final_noise_scale + (init_noise_scale - final_noise_scale) * explr_pct_remaining)
-		maddpg.reset_noise()
-
-		check_point = 400
-		itm_et_i = 0
-
-		# init actions
-		temp_act_init = []
-		for i in range(num_agents):
-			if that_one:
-				temp_act_init.append(np.array([0.0, 0.0]))
-			else:
-				temp_act_init.append(np.array([supervisor.robot[i].getField("translation").getSFVec3f()[2], supervisor.robot[i].getField("translation").getSFVec3f()[0]]))
-		temp_actions = []
-		temp_actions.append(temp_act_init)
-
-		# rise to given altitude
-		for et_i in range(check_point):
-			# supervisor.flight(et_i)
-			supervisor.step_init(temp_actions)
-			itm_et_i = et_i
-		et_i = 0 # itm_et_i
-		ep_rew_ = 0
-		for et_i in range(episode_length):
+	# training loop
+	while time_step <= max_training_timesteps:
+		state = supervisor.reset()
+		current_ep_reward = 0
+		for z in range(400):
+			action = [0.0, 0.0]
+			state, reward, done, _ = supervisor.step(action)
+		for t in range(1, max_ep_len+1):
 			if supervisor.check():
 				break
-			torch_obs = [Variable(torch.Tensor(np.vstack(obs[:, i])), requires_grad=False) for i in range(maddpg.nagents)]
-			torch_agent_actions = maddpg.step(torch_obs, explore=True)
-			agent_actions = [ac.data.numpy() for ac in torch_agent_actions]
-			actions = [[ac[i] for ac in agent_actions] for i in range(n_rollout_threads)]
-			global_et_i = et_i+1
+			# select action with policy
+			action = ppo_agent.select_action(state)
+			state, reward, done, _ = supervisor.step(action)
 
-			if that_one:
-				pass
-			else:
-				for i in range(num_agents):
-					actions[0][i][0] = 2 * actions[0][i][0] + supervisor.robot[i].getField("translation").getSFVec3f()[2]
-					actions[0][i][1] = 2 * actions[0][i][1] + supervisor.robot[i].getField("translation").getSFVec3f()[0]
-			# for m in range(10):
-			next_obs, rewards, dones, infos = supervisor.step(actions)
-			# ep_rew_ += rewards[0][0]
+			# saving reward and is_terminals
+			ppo_agent.buffer.rewards.append(reward)
+			ppo_agent.buffer.is_terminals.append(done)
 
-			index_val_t += 1
-			file_t.seek(0)
-			file_t.write(str(index_val_t))
-			# for a_i, pitch in enumerate(actions[0]):
-			# 	logger.add_scalar('agent%i/Pitch' % a_i, pitch, index_val_t)
-			# for a_i, yaw in enumerate(actions[0]):
-			# 	logger.add_scalar('agent%i/Yaw' % a_i, yaw[1], index_val_t)
+			time_step +=1
+			current_ep_reward += reward
 
-			replay_buffer.push(obs, agent_actions, rewards, next_obs, dones)
-			obs = next_obs
-			t += n_rollout_threads
-			if (len(replay_buffer) >= batch_size and (t % steps_per_update) < n_rollout_threads):
-				if USE_CUDA:
-					maddpg.prep_training(device='gpu')
-				else:
-					maddpg.prep_training(device='cpu')
-				for u_i in range(n_rollout_threads):
-					for a_i in range(maddpg.nagents):
-						sample = replay_buffer.sample(batch_size, to_gpu=USE_CUDA)
-						maddpg.update(sample, index_val_l, a_i, logger=logger)
-					maddpg.update_all_targets()
-					# print('train')
-					index_val_l += 1
-					file_l.seek(0)
-					file_l.write(str(index_val_l))
-				maddpg.prep_rollouts(device='cpu')
+			# update PPO agent
+			if time_step % update_timestep == 0:
+				ppo_agent.update()
 
-		# changed (now back to original)
-		ep_rews = replay_buffer.get_average_rewards(episode_length * n_rollout_threads)
-		for a_i, a_ep_rew in enumerate(ep_rews):
-			logger.add_scalar('agent%i/mean_episode_rewards' % a_i, a_ep_rew, ep_i)
+			# if continuous action space; then decay action std of ouput action distribution
+			if has_continuous_action_space and time_step % action_std_decay_freq == 0:
+				ppo_agent.decay_action_std(action_std_decay_rate, min_action_std)
 
-		if ep_i % save_interval < n_rollout_threads:
-			os.makedirs(run_dir / 'incremental', exist_ok=True)
-			maddpg.save(run_dir / 'incremental' / ('model_ep%i.pt' % (ep_i + 1)))
-			maddpg.save(run_dir / 'model.pt')
+			# log in logging file
+			if time_step % log_freq == 0:
 
-	maddpg.save(run_dir / 'model.pt')
-	logger.export_scalars_to_json(str(log_dir / 'summary.json'))
-	logger.close()
-	file.close()
-	file_t.close()
-	file_l.close()
+				# log average reward till last episode
+				log_avg_reward = log_running_reward / log_running_episodes
+				log_avg_reward = round(log_avg_reward, 4)
 
+				log_f.write('{},{},{}\n'.format(i_episode, time_step, log_avg_reward))
+				log_f.flush()
+
+				log_running_reward = 0
+				log_running_episodes = 0
+
+			# printing average reward
+			if time_step % print_freq == 0:
+
+				# print average reward till last episode
+				print_avg_reward = print_running_reward / print_running_episodes
+				print_avg_reward = round(print_avg_reward, 2)
+
+				print("Episode : {} \t\t Timestep : {} \t\t Average Reward : {}".format(i_episode, time_step, print_avg_reward))
+
+				print_running_reward = 0
+				print_running_episodes = 0
+
+			# save model weights
+			if time_step % save_model_freq == 0:
+				print("--------------------------------------------------------------------------------------------")
+				print("saving model at : " + checkpoint_path)
+				ppo_agent.save(checkpoint_path)
+				print("model saved")
+				print("Elapsed Time  : ", datetime.now().replace(microsecond=0) - start_time)
+				print("--------------------------------------------------------------------------------------------")
+
+			# break; if the episode is over
+			if done:
+				break
+
+		print_running_reward += current_ep_reward
+		print_running_episodes += 1
+		log_running_reward += current_ep_reward
+		log_running_episodes += 1
+		i_episode += 1
+
+	log_f.close()
 	supervisor.close()
+
+	# print total training time
+	print("============================================================================================")
+	end_time = datetime.now().replace(microsecond=0)
+	print("Started training at (GMT) : ", start_time)
+	print("Finished training at (GMT) : ", end_time)
+	print("Total training time  : ", end_time - start_time)
+	print("============================================================================================")
 
 else:
 
