@@ -1,0 +1,38 @@
+#VRML_OBJ R2021a utf8
+DEF LOC1 Solid {
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColorMap ImageTexture {
+          url [
+            "textures/wooden_box_normal.jpg"
+          ]
+        }
+        roughnessMap ImageTexture {
+          url [
+            "textures/wooden_box_roughness.jpg"
+          ]
+        }
+        metalness 0
+        normalMap ImageTexture {
+          url [
+            "textures/wooden_box_normal.jpg"
+          ]
+        }
+        occlusionMap ImageTexture {
+          url [
+            "textures/wooden_box_occlusion.jpg"
+          ]
+        }
+      }
+      geometry Box {
+        size 0.5 0.01 0.5
+      }
+    }
+  ]
+  name "wooden box"
+  model "wooden box"
+  boundingObject Box {
+    size 0.5 0.01 0.5
+  }
+}

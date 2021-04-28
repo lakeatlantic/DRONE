@@ -1,0 +1,37 @@
+#VRML_SIM R2021a utf8
+WorldInfo {
+  title "DJI MAVIC 2 PRO"
+  basicTimeStep 16
+  defaultDamping Damping {
+    linear 0.5
+    angular 0.5
+  }
+  coordinateSystem "NUE"
+}
+Viewpoint {
+  orientation -0.718651931970132 0.6796370218090888 0.14708133553265368 0.5849964017406759
+  position 15.316977529236542 22.684118726342394 41.13408934195908
+  near 0.2
+  followSmoothness 0.2
+}
+TexturedBackground {
+  luminosity 3
+}
+TexturedBackgroundLight {
+}
+Floor {
+  size 20 20
+  tileSize 6 6
+  appearance Marble {
+  }
+}
+DEF supervisor Robot {
+  children [
+    Receiver {
+    }
+    Emitter {
+    }
+  ]
+  controller "supervisorController"
+  supervisor TRUE
+}
