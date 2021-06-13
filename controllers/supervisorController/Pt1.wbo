@@ -1,0 +1,25 @@
+#VRML_OBJ R2021a utf8
+DEF LOC1 Solid {
+  translation 2.37694182382376 1 -2.4497654972764984
+  rotation 1 0 0 -1.5707953071795862
+  children [
+    DEF BALL_SHAPE Shape {
+      appearance PBRAppearance {
+        baseColor 0.643137 0 0
+        roughness 0.3
+        metalness 0
+      }
+      geometry Sphere {
+        radius 0.00325
+        subdivision 4
+      }
+    }
+  ]
+  name "ball"
+  model "ball"
+  boundingObject USE BALL_SHAPE
+  radarCrossSection 1
+  recognitionColors [
+    1 0 0
+  ]
+}
